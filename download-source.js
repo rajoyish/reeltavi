@@ -50,10 +50,13 @@ function qualityLabel(height) {
   return (height >= 1080 ? 'Full HD' : height >= 720 ? 'HD' : 'SD') + ' · ' + height + 'p';
 }
 
+// Resolution as Facebook names it ("1080p"). Portrait videos report height > width, so
+// fall back to the shorter side, which is what the "p" number means.
 function repHeight(rep) {
-  const height = Number(rep.getAttribute('height'));
-  if (height > 0) return height;
-  return Number(rep.getAttribute('FBQualityLabel')?.match(/(\d{3,4})p/i)?.[1]) || 0;
+  const label = Number(rep.getAttribute('FBQualityLabel')?.match(/(\d{3,4})p/i)?.[1]);
+  if (label > 0) return label;
+  const sides = ['width', 'height'].map(name => Number(rep.getAttribute(name))).filter(n => n > 0);
+  return sides.length ? Math.min(...sides) : 0;
 }
 
 function dashTracks(xml, base) {
@@ -87,9 +90,10 @@ function dashTracks(xml, base) {
     el.getAttribute('contentType') === 'audio' || el.getAttribute('mimeType')?.startsWith('audio/'));
   const audio = tracks.audio.sort((a, b) => b.bandwidth - a.bandwidth)[0]?.url || null;
   if (!tracks.video.length || (expectsAudio && !audio)) return null;
-  // Best first: tallest frame, then H.264 (plays everywhere, no conversion), then highest bitrate.
-  const avc = track => /^avc[13]\./i.test(track.codec) ? 1 : 0;
-  tracks.video.sort((a, b) => b.height - a.height || avc(b) - avc(a) || b.bandwidth - a.bandwidth);
+  // Best first: tallest frame, then the codec cheapest to make portable, then highest bitrate.
+  // H.264 needs no conversion; VP9 converts quickly; Chrome may not decode AV1 in WebCodecs.
+  const rank = track => /^avc[13]\./i.test(track.codec) ? 3 : /^vp0?9/i.test(track.codec) ? 2 : /^av01/i.test(track.codec) ? 0 : 1;
+  tracks.video.sort((a, b) => b.height - a.height || rank(b) - rank(a) || b.bandwidth - a.bandwidth);
   return { video: tracks.video, audio };
 }
 
@@ -103,7 +107,7 @@ function dashDownload(xml, base, quality = 'hd') {
   const tracks = dashTracks(xml, base);
   if (!tracks) return null;
   const track = pickDashTrack(tracks.video, quality);
-  return { video: track.url, audio: tracks.audio, height: track.height || null };
+  return { video: track.url, audio: tracks.audio, height: track.height || null, codec: track.codec, bandwidth: track.bandwidth };
 }
 
 function sourcesFromDocument(doc, id) {
@@ -154,7 +158,7 @@ function downloadOptions({ hd, sd, other, dash, manifest }) {
   };
   const dashOption = (quality) => {
     const track = pickDashTrack(dash.video, quality);
-    return { quality, height: track.height || null, video: track.url, audio: dash.audio };
+    return { quality, height: track.height || null, video: track.url, audio: dash.audio, codec: track.codec, bandwidth: track.bandwidth };
   };
 
   // Highest quality: DASH carries 1080p; Facebook's progressive "HD" file is usually 720p.

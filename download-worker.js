@@ -68,11 +68,25 @@ async function ensureOffscreen() {
   await creatingOffscreen;
 }
 
+// Chrome can drop the requested name for blob URLs (it then uses the blob's UUID), and other
+// extensions may rename downloads. Supplying the name here keeps ReelTavi's file names.
+const pendingNames = new Map();
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  const filename = item.byExtensionId === chrome.runtime.id && pendingNames.get(item.url);
+  if (!filename) return;
+  pendingNames.delete(item.url);
+  suggest({ filename, conflictAction: 'uniquify' });
+});
+
 async function saveToDownloads(url, job) {
-  const downloadId = await chrome.downloads.download({
-    url, filename: job.name + '.' + job.ext, conflictAction: 'uniquify', saveAs: false,
-  });
-  await track(downloadId, job);
+  const filename = job.name + '.' + job.ext;
+  pendingNames.set(url, filename);
+  try {
+    const downloadId = await chrome.downloads.download({ url, filename, conflictAction: 'uniquify', saveAs: false });
+    await track(downloadId, job);
+  } finally {
+    setTimeout(() => pendingNames.delete(url), 60000);
+  }
 }
 
 async function startDownload(job, tabId) {
@@ -95,7 +109,9 @@ async function startDownload(job, tabId) {
   const audio = facebookMediaUrl(job?.audio);
   if ((!video && !manifest) || (job?.audio && !audio)) throw new Error('Invalid video source.');
   await ensureOffscreen();
-  await chrome.runtime.sendMessage({ type: 'REELTAVI_BUILD', job: { ...base, video, audio, manifest, quality } });
+  const codec = /^[\w.-]{1,64}$/.test(job?.codec || '') ? job.codec : '';
+  const bandwidth = Number.isInteger(job?.bandwidth) && job.bandwidth > 0 ? job.bandwidth : 0;
+  await chrome.runtime.sendMessage({ type: 'REELTAVI_BUILD', job: { ...base, video, audio, manifest, quality, codec, bandwidth } });
   return key;
 }
 
@@ -116,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         notify(job, { error: error.message || 'Chrome could not save the file.' });
         releaseBlob(message.url);
       });
-    } else notify(job, { percent: message.percent, phase: message.converting ? 'converting' : 'downloading' });
+    } else notify(job, { percent: message.percent, phase: message.phase });
     return;
   }
 

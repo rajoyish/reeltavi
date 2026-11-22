@@ -1,4 +1,4 @@
-/* ReelTavi — Facebook Video Controller — content script
+/* ReelTavi – Video Controller for Facebook — content script
  * Places playback controls above the Reel's author row, or at the
  * bottom of a video when there is no author overlay:
  *   [ -10s ] [ play/pause ] [ +10s ]  00:04  [----o---- slider ----]  03:39  [ fullscreen ]
@@ -373,6 +373,7 @@ function makeControls(video) {
   const phaseText = {
     downloading: 'Downloading',
     converting: 'Converting to H.264',
+    joining: 'Joining video and sound',
     saving: 'Saving to Downloads',
   };
 
@@ -605,15 +606,28 @@ function attachToVideo(video) {
     }
   });
   video.addEventListener('click', () => { lastActiveVideo = video; });
-
-  if (settings.doubleClick) {
-    video.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleFullscreen(video);
-    });
-  }
 }
+
+// Facebook covers Reels with transparent overlays, so a double-click rarely targets the
+// <video> itself. Match the pointer to the video underneath it instead.
+function videoAtPoint(x, y) {
+  return [...document.querySelectorAll('video')].find((video) => {
+    if (!videoBars.has(video)) return false;
+    const r = video.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  });
+}
+
+document.addEventListener('dblclick', (e) => {
+  if (!settings.doubleClick || !e.isTrusted) return;
+  // Leave double-clicks on links, buttons, text fields and the control bar alone.
+  if (e.target.closest?.('a[href], button, input, textarea, select, [role="button"], [role="link"], [contenteditable=""], [contenteditable="true"], .fbfs-bar')) return;
+  const video = videoAtPoint(e.clientX, e.clientY);
+  if (!video) return;
+  e.preventDefault();
+  e.stopPropagation();
+  toggleFullscreen(video);
+}, true);
 
 function scanForVideos() {
   document.querySelectorAll('video').forEach((video) => {

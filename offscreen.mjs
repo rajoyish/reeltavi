@@ -18,10 +18,12 @@ async function build(job) {
       if (!tracks) throw new Error('This stream format is unavailable.');
     }
     let last = -1;
-    const blob = await buildMp4(tracks, (percent, converting) => {
-      if (percent === last) return;
+    let lastPhase = '';
+    const blob = await buildMp4(tracks, (percent, phase) => {
+      if (percent === last && phase === lastPhase) return;
       last = percent;
-      report(job, { percent, converting });
+      lastPhase = phase;
+      report(job, { percent, phase });
     });
     const url = URL.createObjectURL(blob);
     blobs.add(url);

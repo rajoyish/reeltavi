@@ -7,7 +7,7 @@
       "128": "icons/icon128.png"
     },
     "default_popup": "popup.html",
-    "default_title": "ReelTavi — Facebook Video Controller"
+    "default_title": "ReelTavi – Video Controller for Facebook"
   },
   "content_scripts": [
     {
@@ -40,7 +40,7 @@
     "128": "icons/icon128.png"
   },
   "manifest_version": 3,
-  "name": "ReelTavi — Facebook Video Controller",
+  "name": "ReelTavi – Video Controller for Facebook",
   "permissions": [
     "storage",
     "downloads",
@@ -49,5 +49,6 @@
   "version": "1.3.0",
   "background": {
     "service_worker": "download-worker.js"
-  }
+  },
+  "homepage_url": "https://github.com/rajoyish/reeltavi"
 }
