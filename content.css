@@ -1,0 +1,311 @@
+/* ReelTavi — Facebook Video Controller — bottom control bar (like the screenshot) */
+
+.fbfs-wrap {
+  overflow: visible;
+}
+
+/* Leave a gap above the page name and avatar when they overlay the video. */
+.fbfs-bar {
+  position: absolute !important;
+  left: 12px;
+  right: 12px;
+  bottom: var(--fbfs-author-offset, 12px);
+  z-index: 9999;
+  display: flex;
+  container: fbfs-controls / inline-size;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(2px, 1%, 10px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(20, 28, 20, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: auto;
+}
+
+/* Hidden state: mouse left the video, or 3s idle while playing */
+.fbfs-controls-hidden .fbfs-bar:not(:has(:focus-visible, .fbfs-volume:hover, .fbfs-volume-slider:active, .fbfs-download-status:not([hidden]), .fbfs-download-menu:not([hidden]))) {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.fbfs-download-status:not([hidden]) {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(100%, 24ch);
+  bottom: calc(100% + 6px);
+  right: 0;
+  max-width: min(100%, 32ch);
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #182019;
+  color: white;
+  font: 500 13px/1.4 system-ui, sans-serif;
+}
+
+.fbfs-download-status[hidden],
+.fbfs-download-status [hidden] { display: none; }
+
+.fbfs-download-progress {
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+.fbfs-download-progress::-webkit-progress-bar { background: transparent; }
+.fbfs-download-progress::-webkit-progress-value { background: #6ea8ff; border-radius: 3px; transition: width 0.3s ease; }
+.fbfs-download-progress:not([value])::-webkit-progress-bar {
+  background: linear-gradient(90deg, transparent 0 30%, #6ea8ff 30% 60%, transparent 60%) 0 0 / 200% 100%;
+  animation: fbfs-busy 1.2s linear infinite;
+}
+@keyframes fbfs-busy { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .fbfs-download-progress:not([value])::-webkit-progress-bar { animation: none; background: #6ea8ff; opacity: .5; }
+}
+
+.fbfs-download-show {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #9cc3ff;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fbfs-ctrl.fbfs-busy:disabled { opacity: 1; animation: fbfs-pulse-icon 1.4s ease-in-out infinite; }
+@keyframes fbfs-pulse-icon { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .fbfs-ctrl.fbfs-busy:disabled { animation: none; } }
+
+.fbfs-download-menu:not([hidden]) {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 13ch;
+  padding: 4px;
+  border-radius: 8px;
+  background: #182019;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.fbfs-download-option {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #fff;
+  font: 500 13px/1.4 system-ui, sans-serif;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fbfs-download-option:hover,
+.fbfs-download-option:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.fbfs-ctrl {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.fbfs-ctrl:hover:enabled {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.fbfs-ctrl[hidden],
+.fbfs-sound .fbfs-cross,
+.fbfs-sound.fbfs-muted .fbfs-waves {
+  display: none;
+}
+
+.fbfs-sound.fbfs-muted .fbfs-cross {
+  display: inline;
+}
+
+.fbfs-ctrl:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fbfs-volume {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.fbfs-volume-slider {
+  width: 0;
+  min-width: 0;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  visibility: hidden;
+  opacity: 0;
+  transition: width 150ms ease, margin 150ms ease, opacity 150ms ease;
+  accent-color: white;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.fbfs-volume-level {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #182019;
+  color: white;
+  font: 500 12px/1.4 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.fbfs-volume:is(:hover, :has(:focus-visible, :active)) .fbfs-volume-slider {
+  width: clamp(48px, 10cqi, 76px);
+  margin-inline-end: 9px;
+  visibility: visible;
+  opacity: 1;
+}
+
+.fbfs-volume:is(:hover, :has(:focus-visible, :active)) .fbfs-volume-level {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fbfs-volume-slider {
+    transition: none;
+  }
+}
+
+.fbfs-ctrl:focus-visible,
+.fbfs-volume-slider:focus-visible,
+.fbfs-seek:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.fbfs-skip {
+  width: 38px;
+  height: 38px;
+}
+
+@container fbfs-controls (max-width: 450px) {
+  .fbfs-ctrl {
+    width: 28px;
+    height: 32px;
+  }
+  .fbfs-skip svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+.fbfs-fs.fbfs-active {
+  background: #0866ff;
+}
+
+.fbfs-time {
+  flex: 0 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #fff;
+}
+
+/* Scrub slider — thin track, white pill thumb like the screenshot */
+.fbfs-seek {
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.fbfs-seek::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.fbfs-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 16px;
+  margin-top: -5.5px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.fbfs-seek::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.fbfs-seek::-moz-range-thumb {
+  width: 28px;
+  height: 16px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.fbfs-bar.fbfs-pulse {
+  animation: fbfs-pulse 0.8s ease-in-out 2;
+}
+
+@keyframes fbfs-pulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 0 3px #0866ff, 0 4px 18px rgba(0, 0, 0, 0.35); }
+}
+
+/* In fullscreen the bar is inside the fullscreen element, so it stays
+   visible — just give it a little more breathing room. */
+:fullscreen .fbfs-bar {
+  left: 16px;
+  right: 16px;
+  bottom: var(--fbfs-author-offset, 16px);
+}
