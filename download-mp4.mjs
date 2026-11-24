@@ -70,7 +70,12 @@ export async function buildMp4({ video, audio, codec, bandwidth }, onProgress) {
   const willConvert = !/^avc[13]\./i.test(codec || '');
   // Share of the bar used by the download; conversion takes the rest.
   const downloadShare = willConvert ? 0.3 : 0.9;
-  const report = (fraction, phase) => onProgress(Math.min(100, Math.floor(fraction * 100)), phase);
+  // Never let the bar move backwards (e.g. when a second file's size becomes known).
+  let shown = 0;
+  const report = (fraction, phase) => {
+    shown = Math.max(shown, Math.min(100, Math.floor(fraction * 100)));
+    onProgress(shown, phase);
+  };
 
   const urls = [video, audio].filter(Boolean);
   const bytes = urls.map(() => ({ received: 0, total: 0 }));
@@ -84,6 +89,19 @@ export async function buildMp4({ video, audio, codec, bandwidth }, onProgress) {
     report(downloadShare * (known ? sum / size : sum / (size * urls.length)), 'downloading');
   })));
 
+  const onMuxProgress = (fraction, phase) => report(downloadShare + (1 - downloadShare) * fraction, phase);
+  try {
+    return await mux(buffers, { hasAudio: Boolean(audio), bandwidth, convertVideo: true }, onMuxProgress);
+  } catch (error) {
+    if (!error?.reeltaviConverting) throw error;
+    // Chrome said it could convert, then failed mid-way (decoder or encoder refused the
+    // real configuration). Save the original track instead: it plays in Chrome and VLC.
+    shown = Math.floor(downloadShare * 100);
+    return mux(buffers, { hasAudio: Boolean(audio), bandwidth, convertVideo: false }, onMuxProgress);
+  }
+}
+
+async function mux(buffers, { hasAudio, bandwidth, convertVideo }, onProgress) {
   const target = new BufferTarget();
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target });
   const inputs = [];
@@ -103,16 +121,18 @@ export async function buildMp4({ video, audio, codec, bandwidth }, onProgress) {
         const seconds = await input.computeDuration();
         const sourceBitrate = seconds > 0 ? buffer.byteLength * 8 / seconds : bandwidth;
         // When Chrome cannot decode or encode, keep the original track: it still plays in Chrome and VLC.
-        transcode = await track.getCodec() !== PORTABLE_VIDEO && await track.canDecode() &&
+        transcode = convertVideo && await track.getCodec() !== PORTABLE_VIDEO && await track.canDecode() &&
           await canEncodeVideo(PORTABLE_VIDEO, size);
         if (transcode) phase = 'converting';
         options = {
+          // No hardwareAcceleration hint: mediabunny applies it to the decoder too, and
+          // 'prefer-hardware' makes Chrome refuse AV1 on machines without an AV1 hardware
+          // decoder. Chrome still picks the hardware encoder when one is available.
           video: transcode ? {
             codec: PORTABLE_VIDEO,
-            hardwareAcceleration: 'prefer-hardware',
             bitrate: targetBitrate(sourceBitrate, Math.min(size.width, size.height)),
           } : {},
-          audio: { discard: Boolean(audio) },
+          audio: { discard: hasAudio },
         };
       } else {
         const track = await input.getPrimaryAudioTrack();
@@ -134,16 +154,17 @@ export async function buildMp4({ video, audio, codec, bandwidth }, onProgress) {
     for (const [i, conversion] of conversions.entries()) {
       conversion.onProgress = value => {
         progress[i] = value;
-        report(downloadShare + (1 - downloadShare) * Math.min(...progress), phase);
+        onProgress(Math.min(...progress), phase);
       };
     }
-    report(downloadShare, phase);
+    onProgress(0, phase);
     await output.start();
     await Promise.all(conversions.map(conversion => conversion.execute()));
     await output.finalize();
     return new Blob([target.buffer], { type: 'video/mp4' });
   } catch (error) {
     if (output.state === 'started') await output.cancel().catch(() => {});
+    if (phase === 'converting' && error && typeof error === 'object') error.reeltaviConverting = true;
     throw error;
   } finally {
     for (const input of inputs) input.dispose();

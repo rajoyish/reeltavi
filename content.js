@@ -23,6 +23,22 @@ let lastActiveVideo = null;
 
 // Progress for downloads, sent by the service worker. Keyed by job key.
 const downloadJobs = new Map();
+
+// After the extension updates (the Web Store does this automatically) or is reloaded,
+// scripts already running in open tabs lose their connection and chrome.runtime vanishes.
+const RELOAD_NEEDED = 'ReelTavi was updated. Refresh this page to download.';
+const extensionAlive = () => { try { return Boolean(chrome.runtime?.id); } catch { return false; } };
+async function sendToExtension(message) {
+  if (!extensionAlive()) throw new Error(RELOAD_NEEDED);
+  try {
+    return await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    if (!extensionAlive() || /context invalidated|receiving end does not exist/i.test(error?.message || '')) {
+      throw new Error(RELOAD_NEEDED);
+    }
+    throw error;
+  }
+}
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (sender.id !== chrome.runtime.id || message?.type !== 'REELTAVI_PROGRESS') return;
   const handler = downloadJobs.get(message.key);
@@ -343,7 +359,9 @@ function makeControls(video) {
   };
   downloadShow.addEventListener('click', (e) => {
     stop(e);
-    if (e.isTrusted && shownDownload !== null) chrome.runtime.sendMessage({ type: 'REELTAVI_SHOW', downloadId: shownDownload });
+    if (e.isTrusted && shownDownload !== null) {
+      sendToExtension({ type: 'REELTAVI_SHOW', downloadId: shownDownload }).catch(error => showStatus(error.message));
+    }
   });
   const closeMenu = (refocus) => {
     if (downloadMenu.hidden) return;
@@ -382,7 +400,7 @@ function makeControls(video) {
     showStatus('Starting ' + option.label + ' download…', { hold: true, percent: undefined });
     try {
       const { label, ...source } = option;
-      const result = await chrome.runtime.sendMessage({ type: 'REELTAVI_DOWNLOAD', job: { id, ...source } });
+      const result = await sendToExtension({ type: 'REELTAVI_DOWNLOAD', job: { id, ...source } });
       if (!result?.key) throw new Error(result?.error || 'Reload the extension and refresh Facebook to download.');
       downloadJobs.set(result.key, (update) => {
         if (update.error) {
@@ -408,6 +426,7 @@ function makeControls(video) {
     stop(event);
     if (!event.isTrusted || downloading) return;
     if (!downloadMenu.hidden) { closeMenu(); return; }
+    if (!extensionAlive()) { showStatus(RELOAD_NEEDED); return; }
     setDownloading(true);
     showStatus('Finding video…', { hold: true, percent: undefined });
     let found;
