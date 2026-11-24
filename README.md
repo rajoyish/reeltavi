@@ -14,7 +14,7 @@ A Chrome extension that gives Facebook Reels and videos a proper control bar: sk
 | **Responsive layout** | Wide videos get a single row. Narrow players such as 9:16 Reels get two rows: the seek bar on top, playback controls bottom-left and Reel actions bottom-right. |
 | **Keyboard control** | Play, seek, volume, speed, fullscreen, download and Reel navigation from the keyboard. See [Keyboard and accessibility](#keyboard-and-accessibility). |
 | **Skip and seek** | Jump 10 seconds back or forward, or drag the slider to any point. |
-| **Volume** | Hover the speaker to open the slider. Click the speaker to mute or unmute. |
+| **Volume** | Hover the speaker to open the slider. Click the speaker to mute or unmute. Your level is remembered and applied to every Reel and video. |
 | **Reel navigation** | `↑` opens the previous Reel and `↓` the next. A direction that isn't available is dimmed. |
 | **Fullscreen** | Use the button at the right end of the bar, or double-click a video. Auto-fullscreen for Reels can be turned on in the popup. |
 | **Auto-hide** | The bar hides when the mouse leaves the video, or after 3 seconds of no movement while the video plays. |

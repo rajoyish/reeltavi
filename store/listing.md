@@ -4,7 +4,7 @@ Copy each section into the matching field of the [Chrome Web Store developer das
 
 ## Package
 
-- Upload: `dist/reeltavi-1.4.0.zip` (build it with `./scripts/package.sh`)
+- Upload: `dist/reeltavi-1.4.1.zip` (build it with `./scripts/package.sh`)
 
 ## Store listing tab
 

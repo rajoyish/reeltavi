@@ -163,17 +163,28 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
 }
+.fbfs-volume:is(:hover, :has(:focus-visible, :active)) { z-index: 2; }
 
+/* The slider floats over its neighbours instead of taking layout space. Growing it
+   inline made the row wrap at some widths, which moved the speaker out from under
+   the pointer, collapsed the slider and repeated: the bar shook. */
 .fbfs-volume-slider {
+  position: absolute;
+  top: 50%;
+  left: 100%;
   width: 0;
   min-width: 0;
-  height: 24px;
+  height: 32px;
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0 999px 999px 0;
+  background: #1d261e;
+  box-sizing: content-box;
+  transform: translateY(-50%);
   visibility: hidden;
   opacity: 0;
-  transition: width 150ms ease, margin 150ms ease, opacity 150ms ease;
+  transition: width 150ms ease, padding 150ms ease, opacity 150ms ease, visibility 150ms;
   accent-color: white;
   color-scheme: dark;
   cursor: pointer;
@@ -194,9 +205,13 @@
   opacity: 0;
 }
 
+.fbfs-volume:is(:hover, :has(:focus-visible, :active)) {
+  border-radius: 999px 0 0 999px;
+  background: #1d261e;
+}
 .fbfs-volume:is(:hover, :has(:focus-visible, :active)) .fbfs-volume-slider {
-  width: clamp(48px, 10cqi, 76px);
-  margin-inline-end: 9px;
+  width: 76px;
+  padding: 0 12px 0 4px;
   visibility: visible;
   opacity: 1;
 }
@@ -268,11 +283,7 @@
     height: 24px;
   }
   .fbfs-time { font-size: 12px; }
-  /* No room for the volume slider: while it is open, make space by hiding the
-     Previous/Next Reel buttons on the right (nothing moves under the pointer). */
-  .fbfs-bar:has(.fbfs-volume:is(:hover, :has(:focus-visible, :active))) > [data-reel] {
-    display: none;
-  }
+  .fbfs-volume:is(:hover, :has(:focus-visible, :active)) .fbfs-volume-slider { width: 64px; }
 }
 
 .fbfs-fs.fbfs-active {

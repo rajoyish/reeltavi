@@ -22,6 +22,57 @@ let settings = { ...DEFAULTS };
 const videoBars = new WeakMap();
 let lastActiveVideo = null;
 
+// ---------------------------------------------------------------------------
+// Sound preference. Every Reel is a new <video>, and Facebook starts each one with
+// its own (often muted) sound state, so the volume chosen in ReelTavi is remembered
+// here and applied to each video as it starts.
+const SOUND_KEY = 'reeltaviSound';
+let soundPref = null; // { volume: 0..1, muted: boolean } once the person picks a sound level
+let saveSoundTimer;
+
+const clampVolume = (value) => Math.round(Math.min(1, Math.max(0, value)) * 100) / 100;
+
+// Chrome pauses a video that is unmuted before the person has interacted with the page.
+const wantsMuted = () => soundPref.muted || !navigator.userActivation?.hasBeenActive;
+
+function soundMatches(video) {
+  return !soundPref || (video.muted === wantsMuted() && Math.abs(video.volume - soundPref.volume) < 0.005);
+}
+
+function applySound(video) {
+  if (!soundPref || soundMatches(video)) return;
+  if (Math.abs(video.volume - soundPref.volume) >= 0.005) video.volume = soundPref.volume;
+  video.muted = wantsMuted();
+}
+
+// Time of the person's last click or key press. A sound change right after one is
+// theirs (e.g. Facebook's own mute button); any other change is Facebook's player.
+let lastUserInput = -Infinity;
+for (const type of ['pointerdown', 'keydown']) {
+  window.addEventListener(type, (event) => { if (event.isTrusted) lastUserInput = performance.now(); }, true);
+}
+
+function rememberSound(volume, muted) {
+  soundPref = { volume: clampVolume(volume), muted: Boolean(muted) };
+  clearTimeout(saveSoundTimer);
+  saveSoundTimer = setTimeout(() => {
+    if (extensionAlive()) chrome.storage.local.set({ [SOUND_KEY]: soundPref }).catch(() => {});
+  }, 300);
+}
+
+// Sets this video's sound and makes it the level for the next videos too.
+function setSound(video, volume, muted) {
+  rememberSound(volume, muted);
+  applySound(video);
+}
+
+chrome.storage.local.get(SOUND_KEY).then((stored) => {
+  const saved = stored?.[SOUND_KEY];
+  if (soundPref || !saved || !Number.isFinite(saved.volume)) return;
+  soundPref = { volume: clampVolume(saved.volume), muted: Boolean(saved.muted) };
+  document.querySelectorAll('video').forEach((video) => { if (!video.paused) applySound(video); });
+}).catch(() => {});
+
 // Progress for downloads, sent by the service worker. Keyed by job key.
 const downloadJobs = new Map();
 
@@ -501,8 +552,8 @@ function makeControls(video) {
   };
   volumeSlider.addEventListener('input', (event) => {
     event.stopPropagation();
-    video.volume = Number(volumeSlider.value) / 100;
-    video.muted = video.volume === 0;
+    const volume = Number(volumeSlider.value) / 100;
+    setSound(video, volume, volume === 0);
     syncSound();
   });
   volumeSlider.addEventListener('keydown', (event) => {
@@ -513,8 +564,7 @@ function makeControls(video) {
   soundBtn.addEventListener('click', (e) => {
     stop(e);
     const silent = video.muted || video.volume === 0;
-    if (video.volume === 0) video.volume = audibleVolume;
-    video.muted = !silent;
+    setSound(video, video.volume === 0 ? audibleVolume : video.volume, !silent);
     syncSound();
   });
   video.addEventListener('volumechange', syncSound);
@@ -676,6 +726,27 @@ function attachToVideo(video) {
   // Start hidden until the mouse is over the video.
   container.classList.add('fbfs-controls-hidden');
 
+  // When a Reel loads or starts, Facebook sets its own sound state: re-apply the
+  // remembered level. Later, a change made by the person (e.g. with Facebook's own
+  // mute button) becomes the new remembered level; anything else is undone.
+  let settleUntil = 0;
+  const settleSound = () => {
+    settleUntil = performance.now() + 2000;
+    applySound(video);
+  };
+  video.addEventListener('loadstart', settleSound);
+  video.addEventListener('play', settleSound);
+  video.addEventListener('volumechange', () => {
+    if (!soundPref || soundMatches(video)) return;
+    const now = performance.now();
+    if (now >= settleUntil && now - lastUserInput < 1500 && !video.paused && isVisible(video)) {
+      rememberSound(video.volume, video.muted);
+    } else {
+      applySound(video);
+    }
+  });
+  if (!video.paused) settleSound();
+
   video.addEventListener('play', () => {
     lastActiveVideo = video;
     if (settings.autoFullscreenReels && isReelVideo(video) && !document.fullscreenElement) {
@@ -808,19 +879,17 @@ window.addEventListener('keydown', (event) => {
     case 'volUp':
     case 'volDown': {
       const step = action === 'volUp' ? 0.05 : -0.05;
-      const base = video.muted ? 0 : video.volume;
-      video.volume = Math.round(Math.min(1, Math.max(0, base + step)) * 100) / 100;
-      video.muted = video.volume === 0;
-      player.feedback('Volume ' + Math.round(video.volume * 100) + '%');
+      const volume = clampVolume((video.muted ? 0 : video.volume) + step);
+      setSound(video, volume, volume === 0);
+      player.feedback('Volume ' + Math.round(volume * 100) + '%');
       break;
     }
     case 'mute':
       if (video.muted || video.volume === 0) {
-        if (video.volume === 0) video.volume = 0.5;
-        video.muted = false;
+        setSound(video, video.volume || soundPref?.volume || 0.5, false);
         player.feedback('Sound on');
       } else {
-        video.muted = true;
+        setSound(video, video.volume, true);
         player.feedback('Muted');
       }
       break;

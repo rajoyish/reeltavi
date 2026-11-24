@@ -2,6 +2,13 @@
 
 All notable changes to ReelTavi are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] – 2026-11-24
+
+### Fixed
+
+- **Volume reset on the next Reel.** Each new Reel started muted (the slider showed 0) because Facebook applies its own sound state to every new video. ReelTavi now remembers your volume and mute choice and applies it to every Reel and video, even after a page reload. A change you make with Facebook's own mute button is remembered too.
+- **The control bar shook when hovering the speaker.** At some player widths, the volume slider pushed buttons onto an extra row, which moved the speaker away from the pointer and looped. The slider now opens as an overlay beside the speaker, so the bar's layout never changes.
+
 ## [1.4.0] – 2026-11-24
 
 ### Added
@@ -47,5 +54,6 @@ First Chrome Web Store release.
   - Files are named `ReelTavi-<id>-<quality>.mp4`.
 - Privacy policy, store listing and packaging script.
 
+[1.4.1]: https://github.com/rajoyish/reeltavi/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/rajoyish/reeltavi/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/rajoyish/reeltavi/releases/tag/v1.3.0
