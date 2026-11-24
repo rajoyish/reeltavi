@@ -4,7 +4,7 @@ Copy each section into the matching field of the [Chrome Web Store developer das
 
 ## Package
 
-- Upload: `dist/reeltavi-1.3.1.zip` (build it with `./scripts/package.sh`)
+- Upload: `dist/reeltavi-1.4.0.zip` (build it with `./scripts/package.sh`)
 
 ## Store listing tab
 
@@ -30,6 +30,13 @@ PLAYBACK CONTROLS
 • Fullscreen button, or double-click any video
 • Optional auto-fullscreen when a Reel starts
 • Controls hide on their own while you watch
+• Fits any player: one row on wide videos, a tidy two-row layout on vertical Reels
+
+KEYBOARD AND ACCESSIBILITY
+• Space/K play, ←/→ 5 s, J/L 10 s, 0–9 jump, M mute, +/− volume
+• < / > playback speed, F fullscreen, D download, Shift+N / Shift+P next or previous Reel
+• Full shortcut list in the toolbar popup, with an on/off switch
+• Every control works with Tab and screen readers, and changes are announced
 
 DOWNLOADS IN SD OR FULL HD
 • Click Download and choose SD or Full HD (1080p when available)
@@ -63,14 +70,14 @@ ReelTavi isn't affiliated with, endorsed by or sponsored by Meta Platforms, Inc.
 **Single purpose:**
 
 ```
-Adds playback controls (skip, seek, volume, Reel navigation, fullscreen) to Facebook videos and Reels, and lets the user download the video they are watching.
+Adds playback controls (skip, seek, volume, speed, Reel navigation, fullscreen, keyboard shortcuts) to Facebook videos and Reels, and lets the user download the video they are watching.
 ```
 
 **Permission justifications:**
 
 | Permission | Justification |
 |---|---|
-| `storage` | Saves the user's settings (show control bar, double-click fullscreen, auto-fullscreen) and keeps track of downloads in progress in session storage. |
+| `storage` | Saves the user's settings (show control bar, double-click fullscreen, auto-fullscreen, keyboard shortcuts) and keeps track of downloads in progress in session storage. |
 | `downloads` | Saves the video the user chooses to download into Chrome's download folder, reports progress, and opens the file's folder when the user clicks "Show in folder". |
 | `offscreen` | Joins Facebook's separate video and audio tracks into one MP4, and converts the video to H.264, inside an offscreen document so the Facebook tab stays responsive. Uses DOMParser for Facebook's DASH manifests and blob URLs to hand the finished file to chrome.downloads. |
 | Host permissions: `facebook.com`, `*.facebook.com` | Injects the control bar into Facebook pages and reads the page's video data to find the selected video's media links. |

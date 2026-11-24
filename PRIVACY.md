@@ -14,7 +14,7 @@ ReelTavi is a Chrome extension that adds playback controls and downloads to Face
 
 | Data | Why | Where it stays |
 |---|---|---|
-| Your settings (show control bar, double-click fullscreen, auto-fullscreen) | To remember your choices | Chrome sync storage, synced by Chrome to your own Google account if you've turned on Chrome Sync |
+| Your settings (show control bar, double-click fullscreen, auto-fullscreen, keyboard shortcuts) | To remember your choices | Chrome sync storage, synced by Chrome to your own Google account if you've turned on Chrome Sync |
 | Video addresses found in the Facebook page you're viewing | To download the video you asked for | In memory, and in Chrome session storage while a download runs. Deleted when the download ends or the browser closes. |
 | The video and audio of a video you choose to download | To build the MP4 file | Downloaded from Facebook's servers (`facebook.com`, `fbcdn.net`, `fbsbx.com`), processed in memory on your computer, and saved to your Chrome download folder |
 

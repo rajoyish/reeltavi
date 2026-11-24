@@ -2,31 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
   <title>ReelTavi – Video Controller for Facebook</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1><img src="icons/icon48.png" width="24" height="24" alt="">ReelTavi – Video Controller for Facebook</h1>
-  <p class="sub">Hover over a Reel to show playback controls above the page name. Double-click a video to toggle fullscreen.</p>
+  <header class="header">
+    <img class="logo" src="icons/icon48.png" width="40" height="40" alt="">
+    <div>
+      <h1>ReelTavi</h1>
+      <p class="tagline">Video controller for Facebook</p>
+    </div>
+  </header>
 
-  <label class="row">
-    <input type="checkbox" id="showButton">
-    <span>Show custom control bar on videos</span>
-  </label>
+  <div class="tabs" role="tablist" aria-label="ReelTavi">
+    <button type="button" class="tab" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="true">Settings</button>
+    <button type="button" class="tab" role="tab" id="tab-shortcuts" aria-controls="panel-shortcuts" aria-selected="false" tabindex="-1">Shortcuts</button>
+  </div>
 
-  <label class="row">
-    <input type="checkbox" id="doubleClick">
-    <span>Double-click video to toggle fullscreen</span>
-  </label>
+  <main>
+    <section class="panel" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings">
+      <div class="card">
+        <label class="setting">
+          <span class="text">
+            <span class="label">Control bar</span>
+            <span class="desc" id="showButton-desc">Play, seek, volume, download and fullscreen on every video.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="showButton" aria-describedby="showButton-desc">
+        </label>
+        <label class="setting">
+          <span class="text">
+            <span class="label">Double-click for fullscreen</span>
+            <span class="desc" id="doubleClick-desc">Double-click a video to enter or leave fullscreen.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="doubleClick" aria-describedby="doubleClick-desc">
+        </label>
+        <label class="setting">
+          <span class="text">
+            <span class="label">Auto-fullscreen Reels</span>
+            <span class="desc" id="autoFullscreenReels-desc">Goes fullscreen when a Reel starts. Chrome needs a recent click first; if nothing happens, press F.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="autoFullscreenReels" aria-describedby="autoFullscreenReels-desc">
+        </label>
+        <label class="setting">
+          <span class="text">
+            <span class="label">Keyboard shortcuts</span>
+            <span class="desc" id="keyboardShortcuts-desc">Single-key shortcuts while a video is hovered, focused or fullscreen.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="keyboardShortcuts" aria-describedby="keyboardShortcuts-desc">
+        </label>
+      </div>
+    </section>
 
-  <label class="row">
-    <input type="checkbox" id="autoFullscreenReels">
-    <span>Auto-fullscreen Reels when they start playing</span>
-  </label>
-  <p class="hint">Auto-fullscreen needs a recent click/tap — Chrome blocks fullscreen without one. If it doesn't trigger, tap the fullscreen button in the control bar.</p>
+    <section class="panel" role="tabpanel" id="panel-shortcuts" aria-labelledby="tab-shortcuts" hidden>
+      <p class="note" id="shortcutsNote">Work while the pointer is over a video, focus is in its controls, it is fullscreen, or you are on Reels.</p>
 
-  <button id="fullscreenNow" type="button">Make current video fullscreen</button>
-  <p id="status" class="status" role="status"></p>
+      <h2>Playback</h2>
+      <dl class="card keys">
+        <div><dt><kbd>Space</kbd><kbd>K</kbd></dt><dd>Play / pause</dd></div>
+        <div><dt><kbd aria-label="Left arrow">←</kbd><kbd aria-label="Right arrow">→</kbd></dt><dd>Back / forward 5 s</dd></div>
+        <div><dt><kbd>J</kbd><kbd>L</kbd></dt><dd>Back / forward 10 s</dd></div>
+        <div><dt><kbd>0</kbd>–<kbd>9</kbd></dt><dd>Jump to 0–90%</dd></div>
+        <div><dt><kbd>&lt;</kbd><kbd>&gt;</kbd></dt><dd>Slower / faster</dd></div>
+      </dl>
+
+      <h2>Sound</h2>
+      <dl class="card keys">
+        <div><dt><kbd>M</kbd></dt><dd>Mute / unmute</dd></div>
+        <div><dt><kbd>+</kbd><kbd>−</kbd></dt><dd>Volume up / down</dd></div>
+        <div><dt><kbd aria-label="Up arrow">↑</kbd><kbd aria-label="Down arrow">↓</kbd></dt><dd>Volume (videos; Reels keep Facebook's Reel switching)</dd></div>
+      </dl>
+
+      <h2>View &amp; Reels</h2>
+      <dl class="card keys">
+        <div><dt><kbd>F</kbd></dt><dd>Fullscreen</dd></div>
+        <div><dt><kbd>D</kbd></dt><dd>Download (choose quality)</dd></div>
+        <div><dt><kbd>Shift</kbd><kbd>N</kbd></dt><dd>Next Reel</dd></div>
+        <div><dt><kbd>Shift</kbd><kbd>P</kbd></dt><dd>Previous Reel</dd></div>
+        <div><dt><kbd>Tab</kbd></dt><dd>Move through the control bar</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd>Close menu / leave fullscreen</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <button id="fullscreenNow" class="primary" type="button">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      Fullscreen current video
+    </button>
+    <p id="status" class="status" role="status"></p>
+  </footer>
 
   <script src="popup.js"></script>
 </body>

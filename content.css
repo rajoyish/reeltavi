@@ -17,7 +17,8 @@
   align-items: center;
   gap: clamp(2px, 1%, 10px);
   padding: 8px 14px;
-  border-radius: 999px;
+  /* Half the one-row height: a pill on one row, a soft card when it wraps to two. */
+  border-radius: 27px;
   background: rgba(20, 28, 20, 0.72);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -222,14 +223,55 @@
   height: 38px;
 }
 
-@container fbfs-controls (max-width: 450px) {
-  .fbfs-ctrl {
-    width: 28px;
+.fbfs-break {
+  display: none;
+}
+
+/* Narrow players (Reels are 9:16): the seek bar gets its own full-width row on top,
+   playback controls sit bottom-left and the Reel actions bottom-right.
+   One row needs about 600px, or 680px when the Previous/Next Reel buttons show. */
+@container fbfs-controls (max-width: 600px) {
+  .fbfs-current { order: -4; }
+  .fbfs-seek { order: -3; }
+  .fbfs-duration { order: -2; }
+  .fbfs-break {
+    display: block;
+    order: -1;
+    flex-basis: 100%;
+    height: 0;
+  }
+  .fbfs-volume { margin-inline-end: auto; }
+  .fbfs-time { font-size: 13px; }
+  .fbfs-seek { height: 22px; }
+}
+@container fbfs-controls (601px <= width <= 680px) {
+  .fbfs-bar:has(> [data-reel]:not([hidden])) > .fbfs-current { order: -4; }
+  .fbfs-bar:has(> [data-reel]:not([hidden])) > .fbfs-seek { order: -3; height: 22px; }
+  .fbfs-bar:has(> [data-reel]:not([hidden])) > .fbfs-duration { order: -2; font-size: 13px; }
+  .fbfs-bar:has(> [data-reel]:not([hidden])) > .fbfs-break { display: block; order: -1; flex-basis: 100%; height: 0; }
+  .fbfs-bar:has(> [data-reel]:not([hidden])) > .fbfs-volume { margin-inline-end: auto; }
+}
+
+/* Very narrow players: tighter buttons so the bottom row still fits on one line. */
+@container fbfs-controls (max-width: 340px) {
+  .fbfs-ctrl,
+  .fbfs-skip {
+    width: 30px;
     height: 32px;
   }
+  .fbfs-ctrl svg {
+    width: 20px;
+    height: 20px;
+  }
   .fbfs-skip svg {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
+  }
+  .fbfs-time { font-size: 12px; }
+  /* No room for the volume slider: while it is open, make space by hiding the
+     Previous/Next Reel buttons on the right (nothing moves under the pointer). */
+  .fbfs-bar:has(.fbfs-volume:is(:hover, :has(:focus-visible, :active))) > [data-reel] {
+    display: none;
   }
 }
 
@@ -308,4 +350,47 @@
   left: 16px;
   right: 16px;
   bottom: var(--fbfs-author-offset, 16px);
+}
+
+/* Shortcut feedback: a short label in the middle of the player. */
+.fbfs-osd {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(20, 28, 20, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font: 600 15px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fbfs-osd-in 0.15s ease-out;
+}
+.fbfs-osd[hidden] { display: none; }
+@keyframes fbfs-osd-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); } }
+@media (prefers-reduced-motion: reduce) { .fbfs-osd { animation: none; } }
+
+/* Read by screen readers only. */
+.fbfs-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High-contrast / forced-colors: keep controls and focus visible. */
+@media (forced-colors: active) {
+  .fbfs-bar, .fbfs-osd, .fbfs-download-menu, .fbfs-download-status { border: 1px solid CanvasText; }
+  .fbfs-ctrl:focus-visible, .fbfs-seek:focus-visible, .fbfs-volume-slider:focus-visible { outline-color: Highlight; }
 }

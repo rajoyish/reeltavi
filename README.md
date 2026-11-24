@@ -1,6 +1,8 @@
 # ReelTavi – Video Controller for Facebook
 
-A Chrome extension that gives Facebook Reels and videos a proper control bar: skip, scrub, volume, Reel navigation, fullscreen, and one-click **SD / Full HD downloads** that play everywhere.
+A Chrome extension that gives Facebook Reels and videos a proper control bar: skip, scrub, volume, Reel navigation, fullscreen, full keyboard control, and one-click **SD / Full HD downloads** that play everywhere.
+
+[**Install from the Chrome Web Store**](https://chromewebstore.google.com/detail/bajiobangpfdkbnoghmoejbhbfcggffl) · [Changelog](CHANGELOG.md)
 
 ![ReelTavi control bar on a Facebook Reel](store/screenshots/1-control-bar.png)
 
@@ -9,6 +11,8 @@ A Chrome extension that gives Facebook Reels and videos a proper control bar: sk
 | | |
 |---|---|
 | **Playback bar** | `−10s` · `▶/⏸` · `+10s` · volume · time · seek · `↑` `↓` · download · fullscreen. It sits above the page name on Reels and at the bottom of other videos. |
+| **Responsive layout** | Wide videos get a single row. Narrow players such as 9:16 Reels get two rows: the seek bar on top, playback controls bottom-left and Reel actions bottom-right. |
+| **Keyboard control** | Play, seek, volume, speed, fullscreen, download and Reel navigation from the keyboard. See [Keyboard and accessibility](#keyboard-and-accessibility). |
 | **Skip and seek** | Jump 10 seconds back or forward, or drag the slider to any point. |
 | **Volume** | Hover the speaker to open the slider. Click the speaker to mute or unmute. |
 | **Reel navigation** | `↑` opens the previous Reel and `↓` the next. A direction that isn't available is dimmed. |
@@ -36,7 +40,7 @@ Downloads work for unencrypted, finished videos. Live streams and DRM-protected 
 
 ### From the Chrome Web Store
 
-*Coming soon.*
+[ReelTavi on the Chrome Web Store](https://chromewebstore.google.com/detail/bajiobangpfdkbnoghmoejbhbfcggffl). Chrome keeps it up to date. If an update arrives while Facebook is open, refresh the tab before downloading.
 
 ### From source (developer mode)
 
@@ -50,13 +54,40 @@ After pulling changes, click **Reload** on the ReelTavi card and refresh Faceboo
 
 ## Settings
 
-Click the ReelTavi icon in Chrome's toolbar to:
+Click the ReelTavi icon in Chrome's toolbar. The **Settings** tab lets you:
 
 - Show or hide the control bar
 - Turn double-click fullscreen on or off
 - Turn auto-fullscreen for Reels on or off
+- Turn keyboard shortcuts on or off
 
-Chrome only allows fullscreen after a recent click. If a Reel starts playing on its own, the automatic request may be blocked. The bar then pulses, and one click on its fullscreen button finishes the job.
+The **Shortcuts** tab lists every keyboard shortcut. The popup follows your system's light or dark mode.
+
+Chrome only allows fullscreen after a recent click. If a Reel starts playing on its own, the automatic request may be blocked. The bar then pulses, and one click on its fullscreen button (or pressing F) finishes the job.
+
+## Keyboard and accessibility
+
+Shortcuts work while the pointer is over a video, focus is in its control bar, the video is fullscreen, or you are on Reels. Elsewhere, Facebook's own shortcuts (j/k/l…) are left alone.
+
+| Keys | Action |
+| --- | --- |
+| Space, K | Play / pause |
+| ← / → | Back / forward 5 s |
+| J / L | Back / forward 10 s |
+| 0–9 | Jump to 0–90% |
+| < / > | Slower / faster |
+| M | Mute / unmute |
+| + / − | Volume up / down |
+| ↑ / ↓ | Volume (on Reels, Facebook keeps them for switching Reels) |
+| F | Fullscreen |
+| D | Download (choose quality) |
+| Shift+N / Shift+P | Next / previous Reel |
+
+- Every control is reachable with Tab; the bar appears while it has focus.
+- Buttons announce their current state (Play/Pause, Mute/Unmute, Fullscreen/Exit fullscreen), and the seek slider reads as "0:05 of 0:20".
+- On the seek slider, arrows move 5 s, Page Up/Down 10 s, Home/End jump to the start or end.
+- Shortcut actions show a short on-screen label and are announced to screen readers; downloads announce each phase, not every percent.
+- Respects reduced motion and Windows high-contrast (forced colors).
 
 ## Privacy
 
@@ -66,8 +97,8 @@ ReelTavi has no servers, analytics or tracking. Settings are stored in Chrome sy
 
 ```
 manifest.json         Manifest V3; runs only on facebook.com
-content.js / .css     Control bar, quality menu and progress UI
-popup.*               Toolbar popup and settings
+content.js / .css     Control bar, keyboard shortcuts, quality menu and progress UI
+popup.*               Toolbar popup: settings and shortcut list
 download-source.js    Finds a video's SD / HD / DASH sources in Facebook's page data
 download-worker.js    Service worker: starts downloads, relays progress, names files
 offscreen.html/.mjs   Hidden page that builds MP4 files from separate tracks
@@ -75,6 +106,7 @@ download-mp4.mjs      Parallel track download, H.264 conversion, MP4 joining
 vendor/mediabunny/    Mediabunny 1.66.2 (MPL-2.0), the MP4 reading/writing library
 store/                Chrome Web Store listing text, screenshots and promo tile
 scripts/package.sh    Builds the upload ZIP in dist/
+CHANGELOG.md          Release notes
 ```
 
 Build the Chrome Web Store package:
@@ -82,6 +114,8 @@ Build the Chrome Web Store package:
 ```sh
 ./scripts/package.sh   # → dist/reeltavi-<version>.zip
 ```
+
+To release: bump `version` in `manifest.json`, add an entry to [CHANGELOG.md](CHANGELOG.md), run the script, and upload the ZIP in the [developer dashboard](https://chrome.google.com/webstore/devconsole).
 
 ## License
 

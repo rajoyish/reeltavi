@@ -15,6 +15,7 @@ const DEFAULTS = {
   showButton: true, // now means: show the custom control bar
   doubleClick: true,
   autoFullscreenReels: false,
+  keyboardShortcuts: true,
 };
 
 let settings = { ...DEFAULTS };
@@ -286,11 +287,11 @@ function makeControls(video) {
   bar.setAttribute('aria-label', 'Video controls');
 
   bar.innerHTML = `
-    <button type="button" class="fbfs-ctrl fbfs-skip" data-skip="-10" title="Back 10 seconds" aria-label="Back 10 seconds">${skipIcon(-1)}</button>
-    <button type="button" class="fbfs-ctrl fbfs-play" title="Play / pause" aria-label="Play or pause">${ICON_PLAY}</button>
-    <button type="button" class="fbfs-ctrl fbfs-skip" data-skip="10" title="Forward 10 seconds" aria-label="Forward 10 seconds">${skipIcon(1)}</button>
+    <button type="button" class="fbfs-ctrl fbfs-skip" data-skip="-10" title="Back 10 seconds (J)" aria-label="Back 10 seconds" aria-keyshortcuts="J">${skipIcon(-1)}</button>
+    <button type="button" class="fbfs-ctrl fbfs-play" title="Play (K)" aria-label="Play" aria-keyshortcuts="K Space">${ICON_PLAY}</button>
+    <button type="button" class="fbfs-ctrl fbfs-skip" data-skip="10" title="Forward 10 seconds (L)" aria-label="Forward 10 seconds" aria-keyshortcuts="L">${skipIcon(1)}</button>
     <div class="fbfs-volume" role="group" aria-label="Volume">
-      <button type="button" class="fbfs-ctrl fbfs-sound" title="Mute" aria-label="Mute">
+      <button type="button" class="fbfs-ctrl fbfs-sound" title="Mute (M)" aria-label="Mute" aria-keyshortcuts="M">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9h4l5-4v14l-5-4H3z"/>
           <path class="fbfs-waves" d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/>
@@ -301,20 +302,21 @@ function makeControls(video) {
       <span class="fbfs-volume-level" aria-hidden="true"></span>
     </div>
     <span class="fbfs-time fbfs-current">00:00</span>
-    <input type="range" class="fbfs-seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <input type="range" class="fbfs-seek" min="0" max="1000" value="0" step="1" aria-label="Seek" aria-valuetext="0:00 of 0:00">
     <span class="fbfs-time fbfs-duration">00:00</span>
-    <button type="button" class="fbfs-ctrl" data-reel="previous" hidden title="Previous Reel" aria-label="Previous Reel">
+    <span class="fbfs-break" aria-hidden="true"></span>
+    <button type="button" class="fbfs-ctrl" data-reel="previous" hidden title="Previous Reel (Shift+P)" aria-label="Previous Reel" aria-keyshortcuts="Shift+P">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
     </button>
-    <button type="button" class="fbfs-ctrl" data-reel="next" hidden title="Next Reel" aria-label="Next Reel">
+    <button type="button" class="fbfs-ctrl" data-reel="next" hidden title="Next Reel (Shift+N)" aria-label="Next Reel" aria-keyshortcuts="Shift+N">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
     </button>
-    <button type="button" class="fbfs-ctrl fbfs-download" title="Download video" aria-label="Download video" aria-haspopup="menu" aria-expanded="false">
+    <button type="button" class="fbfs-ctrl fbfs-download" title="Download video (D)" aria-label="Download video" aria-keyshortcuts="D" aria-haspopup="menu" aria-expanded="false">
       <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></svg>
     </button>
-    <button type="button" class="fbfs-ctrl fbfs-fs" title="Fullscreen" aria-label="Fullscreen">${ICON_FULLSCREEN}</button>
+    <button type="button" class="fbfs-ctrl fbfs-fs" title="Fullscreen (F)" aria-label="Fullscreen" aria-keyshortcuts="F">${ICON_FULLSCREEN}</button>
     <div class="fbfs-download-status" hidden>
-      <span class="fbfs-download-text" role="status"></span>
+      <span class="fbfs-download-text"></span>
       <progress class="fbfs-download-progress" max="100" hidden aria-label="Download progress"></progress>
       <button type="button" class="fbfs-download-show" hidden>Show in folder</button>
     </div>
@@ -346,8 +348,13 @@ function makeControls(video) {
   let statusTimer;
   let shownDownload = null;
   // percent: null hides the bar, undefined shows a busy bar, a number shows that progress.
+  let lastAnnounced = '';
   const showStatus = (text, { hold = false, percent = null, downloadId = null } = {}) => {
     clearTimeout(statusTimer);
+    // Screen readers hear each phase once, not every percent.
+    const spoken = text.replace(/ \d+%$/, '');
+    if (spoken && spoken !== lastAnnounced) announce(spoken);
+    lastAnnounced = spoken;
     downloadText.textContent = text;
     downloadStatus.hidden = !text;
     downloadProgress.hidden = percent === null;
@@ -379,6 +386,11 @@ function makeControls(video) {
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       stop(e);
       items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      stop(e);
+      items[e.key === 'Home' ? 0 : items.length - 1]?.focus();
+    } else if (e.key === 'Tab') {
+      closeMenu();
     }
   });
 
@@ -422,10 +434,14 @@ function makeControls(video) {
     }
   };
 
-  download.addEventListener('click', async (event) => {
+  download.addEventListener('click', (event) => {
     stop(event);
-    if (!event.isTrusted || downloading) return;
-    if (!downloadMenu.hidden) { closeMenu(); return; }
+    if (event.isTrusted) toggleDownloadMenu();
+  });
+  // Opened by a click or the D shortcut (both real user actions).
+  const toggleDownloadMenu = async () => {
+    if (downloading) return;
+    if (!downloadMenu.hidden) { closeMenu(true); return; }
     if (!extensionAlive()) { showStatus(RELOAD_NEEDED); return; }
     setDownloading(true);
     showStatus('Finding video…', { hold: true, percent: undefined });
@@ -463,7 +479,7 @@ function makeControls(video) {
     download.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outsideMenu, true);
     downloadMenu.querySelector('button').focus();
-  });
+  };
 
   playBtn.addEventListener('click', (e) => {
     stop(e);
@@ -476,8 +492,8 @@ function makeControls(video) {
     if (video.volume > 0) audibleVolume = video.volume;
     const silent = video.muted || video.volume === 0;
     soundBtn.classList.toggle('fbfs-muted', silent);
-    soundBtn.title = silent ? 'Unmute' : 'Mute';
-    soundBtn.setAttribute('aria-label', soundBtn.title);
+    soundBtn.setAttribute('aria-label', silent ? 'Unmute' : 'Mute');
+    soundBtn.title = (silent ? 'Unmute' : 'Mute') + ' (M)';
     const percent = silent ? 0 : Math.round(video.volume * 100);
     volumeSlider.value = String(percent);
     volumeSlider.setAttribute('aria-valuetext', percent + '%');
@@ -527,6 +543,17 @@ function makeControls(video) {
     toggleFullscreen(video);
   });
 
+  // Keyboard on the seek slider: arrows move 5 s, Page Up/Down 10 s, Home/End jump.
+  // (The slider has 1000 steps, so native arrow keys would barely move it.)
+  seek.addEventListener('keydown', (event) => {
+    const steps = { ArrowLeft: -5, ArrowDown: -5, ArrowRight: 5, ArrowUp: 5, PageDown: -10, PageUp: 10 };
+    if (!isFinite(video.duration) || !(event.key in steps || event.key === 'Home' || event.key === 'End')) return;
+    stop(event);
+    if (event.key === 'Home') video.currentTime = 0;
+    else if (event.key === 'End') video.currentTime = Math.max(0, video.duration - 0.1);
+    else seekBy(video, steps[event.key]);
+  });
+
   // Scrub through the video with the slider.
   seek.addEventListener('input', () => {
     seeking = true;
@@ -539,6 +566,8 @@ function makeControls(video) {
 
   const syncPlayIcon = () => {
     playBtn.innerHTML = video.paused ? ICON_PLAY : ICON_PAUSE;
+    playBtn.setAttribute('aria-label', video.paused ? 'Play' : 'Pause');
+    playBtn.title = (video.paused ? 'Play' : 'Pause') + ' (K)';
   };
   const syncTime = () => {
     if (isFinite(video.duration) && video.duration > 0) {
@@ -546,11 +575,14 @@ function makeControls(video) {
       if (!seeking) seek.value = String(Math.round((video.currentTime / video.duration) * 1000));
     }
     currentEl.textContent = formatTime(video.currentTime);
+    seek.setAttribute('aria-valuetext', spokenTime(video.currentTime) + ' of ' + spokenTime(video.duration));
   };
   const syncFsIcon = () => {
     const inFs = !!document.fullscreenElement;
     fsBtn.innerHTML = inFs ? ICON_EXIT_FULLSCREEN : ICON_FULLSCREEN;
     fsBtn.classList.toggle('fbfs-active', inFs);
+    fsBtn.setAttribute('aria-label', inFs ? 'Exit fullscreen' : 'Fullscreen');
+    fsBtn.title = (inFs ? 'Exit fullscreen' : 'Fullscreen') + ' (F)';
   };
 
   video.addEventListener('play', syncPlayIcon);
@@ -565,7 +597,7 @@ function makeControls(video) {
   syncFsIcon();
 
   bar.style.display = settings.showButton ? '' : 'none';
-  return bar;
+  return { bar, toggleDownloadMenu };
 }
 
 function attachToVideo(video) {
@@ -579,9 +611,14 @@ function attachToVideo(video) {
   const style = getComputedStyle(container);
   if (style.position === 'static') container.style.position = 'relative';
 
-  const bar = makeControls(video);
+  const { bar, toggleDownloadMenu } = makeControls(video);
   videoBars.set(video, bar);
   container.appendChild(bar);
+  const osd = document.createElement('div');
+  osd.className = 'fbfs-osd';
+  osd.setAttribute('aria-hidden', 'true');
+  osd.hidden = true;
+  container.appendChild(osd);
 
   // --- Hide the controls when the mouse goes out of focus ---
   // Show on hover / movement, hide on mouse-leave, and hide after
@@ -606,6 +643,29 @@ function attachToVideo(video) {
   });
   container.addEventListener('mousemove', showControls);
   container.addEventListener('mouseleave', hideControls);
+  // Keyboard users: show the bar while focus is inside it.
+  container.addEventListener('focusin', () => {
+    lastActiveVideo = video;
+    positionControls(video);
+    showControls();
+  });
+  container.addEventListener('mouseenter', () => { hoveredVideo = video; });
+  container.addEventListener('mouseleave', () => { if (hoveredVideo === video) hoveredVideo = null; });
+  let osdTimer;
+  players.set(video, {
+    container,
+    toggleDownloadMenu,
+    // Brief visual feedback for a shortcut, also read out by screen readers.
+    feedback(text) {
+      positionControls(video);
+      showControls();
+      osd.textContent = text;
+      osd.hidden = false;
+      clearTimeout(osdTimer);
+      osdTimer = setTimeout(() => { osd.hidden = true; }, 900);
+      announce(text);
+    },
+  });
   video.addEventListener('play', showControls);
   video.addEventListener('pause', () => {
     // Keep the bar visible when paused, so Play is always reachable
@@ -626,6 +686,172 @@ function attachToVideo(video) {
   });
   video.addEventListener('click', () => { lastActiveVideo = video; });
 }
+
+// ---------------------------------------------------------------------------
+// Keyboard shortcuts. They act only while the person is engaged with a player
+// (pointer over it, focus inside it, fullscreen, or a Reels page), so Facebook's
+// own feed shortcuts (j/k/l, etc.) keep working everywhere else. Shown in the popup.
+const players = new WeakMap();
+let hoveredVideo = null;
+
+// One shared, visually hidden live region for screen-reader announcements.
+let liveRegion = null;
+function announce(text) {
+  if (!liveRegion || !liveRegion.isConnected) {
+    liveRegion = document.createElement('div');
+    liveRegion.className = 'fbfs-sr-only';
+    liveRegion.setAttribute('role', 'status');
+    liveRegion.setAttribute('aria-live', 'polite');
+    document.body.appendChild(liveRegion);
+  }
+  // Clear first so repeating the same message is announced again.
+  liveRegion.textContent = '';
+  setTimeout(() => { liveRegion.textContent = text; }, 50);
+}
+
+function spokenTime(sec) {
+  if (!isFinite(sec)) return '0:00';
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = String(sec % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}
+
+function seekBy(video, delta) {
+  const end = isFinite(video.duration) ? video.duration : Infinity;
+  video.currentTime = Math.min(Math.max(0, (video.currentTime || 0) + delta), end);
+}
+
+function isVisible(video) {
+  const r = video.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+}
+
+function shortcutVideo() {
+  const known = (video) => video && players.has(video) && document.contains(video);
+  const fs = document.fullscreenElement;
+  if (fs) {
+    const inside = [...fs.querySelectorAll('video')].find(known) || (fs.matches('video') && known(fs) ? fs : null);
+    if (inside) return inside;
+  }
+  const focused = document.activeElement?.closest?.('[data-fbfs]')?.querySelector('video');
+  if (known(focused)) return focused;
+  if (known(hoveredVideo) && isVisible(hoveredVideo)) return hoveredVideo;
+  if (isReelPage()) {
+    const visible = [...document.querySelectorAll('video')].filter((v) => known(v) && isVisible(v));
+    return visible.find((v) => !v.paused) || visible[0] || null;
+  }
+  return null;
+}
+
+function isTyping(el) {
+  return el?.closest?.('input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]), textarea, select, [contenteditable=""], [contenteditable="true"], [role="textbox"], [role="combobox"], [role="searchbox"]');
+}
+
+const KEY_ACTIONS = {
+  ' ': 'play', k: 'play',
+  arrowleft: 'back5', arrowright: 'fwd5',
+  j: 'back10', l: 'fwd10',
+  arrowup: 'volUp', arrowdown: 'volDown', '+': 'volUp', '=': 'volUp', '-': 'volDown', _: 'volDown',
+  m: 'mute', f: 'fullscreen', d: 'download',
+  '<': 'slower', '>': 'faster',
+  'shift+n': 'nextReel', 'shift+p': 'previousReel',
+};
+
+function shortcutAction(event) {
+  const key = event.key.toLowerCase();
+  if (/^[0-9]$/.test(key) && !event.shiftKey) return 'jump';
+  // Some layouts and automation tools report Shift+. as "." rather than ">".
+  if (event.shiftKey && event.code === 'Period') return 'faster';
+  if (event.shiftKey && event.code === 'Comma') return 'slower';
+  if (event.shiftKey && (key === 'n' || key === 'p')) return KEY_ACTIONS['shift+' + key];
+  if (event.shiftKey && /^[a-z]$/.test(key)) return null;
+  return KEY_ACTIONS[key] || null;
+}
+
+window.addEventListener('keydown', (event) => {
+  if (!settings.keyboardShortcuts || !event.isTrusted || event.defaultPrevented ||
+      event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+  const target = event.target;
+  if (isTyping(target)) return;
+  const action = shortcutAction(event);
+  if (!action) return;
+  // Let focused controls keep their native keys (Space/Enter on buttons, arrows on sliders).
+  if (event.key === ' ' && target?.closest?.('button, a[href], [role="button"], [role="link"], [role="menuitem"], [role="checkbox"], [role="tab"]')) return;
+  if (/^arrow|^home$|^end$|^page/i.test(event.key) && target?.closest?.('input[type="range"], [role="slider"], [role="menu"], [role="listbox"]')) return;
+  // On Reels, Facebook moves between Reels with the up/down arrows. Keep that.
+  if ((action === 'volUp' || action === 'volDown') && event.key.startsWith('Arrow') && isReelPage() && !document.fullscreenElement) return;
+
+  const video = shortcutVideo();
+  if (!video) return;
+  const player = players.get(video);
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  lastActiveVideo = video;
+
+  switch (action) {
+    case 'play':
+      if (video.paused) { video.play().catch(() => {}); player.feedback('Play'); }
+      else { video.pause(); player.feedback('Pause'); }
+      break;
+    case 'back5': seekBy(video, -5); player.feedback('Back 5 seconds'); break;
+    case 'fwd5': seekBy(video, 5); player.feedback('Forward 5 seconds'); break;
+    case 'back10': seekBy(video, -10); player.feedback('Back 10 seconds'); break;
+    case 'fwd10': seekBy(video, 10); player.feedback('Forward 10 seconds'); break;
+    case 'jump':
+      if (isFinite(video.duration)) {
+        video.currentTime = video.duration * Number(event.key) / 10;
+        player.feedback(spokenTime(video.currentTime) + ' of ' + spokenTime(video.duration));
+      }
+      break;
+    case 'volUp':
+    case 'volDown': {
+      const step = action === 'volUp' ? 0.05 : -0.05;
+      const base = video.muted ? 0 : video.volume;
+      video.volume = Math.round(Math.min(1, Math.max(0, base + step)) * 100) / 100;
+      video.muted = video.volume === 0;
+      player.feedback('Volume ' + Math.round(video.volume * 100) + '%');
+      break;
+    }
+    case 'mute':
+      if (video.muted || video.volume === 0) {
+        if (video.volume === 0) video.volume = 0.5;
+        video.muted = false;
+        player.feedback('Sound on');
+      } else {
+        video.muted = true;
+        player.feedback('Muted');
+      }
+      break;
+    case 'slower':
+    case 'faster': {
+      const rates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+      const at = rates.findIndex((rate) => rate >= video.playbackRate - 0.01);
+      const next = rates[Math.min(rates.length - 1, Math.max(0, (at < 0 ? 3 : at) + (action === 'faster' ? 1 : -1)))];
+      video.playbackRate = next;
+      player.feedback('Speed ' + next + '×');
+      break;
+    }
+    case 'fullscreen':
+      toggleFullscreen(video);
+      break;
+    case 'download':
+      player.toggleDownloadMenu();
+      break;
+    case 'nextReel':
+    case 'previousReel': {
+      const direction = action === 'nextReel' ? 'next' : 'previous';
+      if (!navigationAvailable(getReelTargets(video)?.[direction])) {
+        player.feedback(direction === 'next' ? 'No next Reel' : 'No previous Reel');
+        break;
+      }
+      navigateReel(video, direction).catch((error) => console.debug('[ReelTavi]', error));
+      announce(direction === 'next' ? 'Next Reel' : 'Previous Reel');
+      break;
+    }
+  }
+}, true);
 
 // Facebook covers Reels with transparent overlays, so a double-click rarely targets the
 // <video> itself. Match the pointer to the video underneath it instead.

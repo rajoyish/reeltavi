@@ -1,67 +1,227 @@
-body {
-  width: 300px;
-  margin: 0;
-  padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
-  color: #1c1e21;
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --border: #e3e7ee;
+  --text: #121826;
+  --muted: #5d6676;
+  --accent: #0866ff;
+  --accent-hover: #0657db;
+  --accent-soft: rgba(8, 102, 255, 0.1);
+  --switch-off: #c9cfd9;
+  --kbd-bg: #f1f3f7;
+  --kbd-border: #cfd5df;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
 }
 
-h1 {
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f131a;
+    --surface: #181e28;
+    --border: #273041;
+    --text: #eef1f6;
+    --muted: #9aa4b5;
+    --accent: #4c8dff;
+    --accent-hover: #6aa0ff;
+    --accent-soft: rgba(76, 141, 255, 0.16);
+    --switch-off: #3a4456;
+    --kbd-bg: #222a37;
+    --kbd-border: #364154;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 360px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 6px;
-  font-size: 16px;
+  gap: 12px;
+  padding: 18px 18px 14px;
 }
+.logo { border-radius: 10px; box-shadow: var(--shadow); }
+h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.tagline { margin: 1px 0 0; color: var(--muted); font-size: 12.5px; }
 
-.sub {
-  margin: 0 0 14px;
-  color: #606770;
-  line-height: 1.4;
+/* Tabs (segmented control) */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 18px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--border);
 }
-
-.row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 10px 0;
-  cursor: pointer;
-  line-height: 1.35;
-}
-
-.row input {
-  margin-top: 2px;
-  accent-color: #0866ff;
-}
-
-.hint {
-  margin: 4px 0 14px 26px;
-  font-size: 12px;
-  color: #606770;
-  line-height: 1.4;
-}
-
-#fullscreenNow {
-  width: 100%;
-  padding: 10px;
-  border: none;
+.tab {
+  padding: 7px 0;
+  border: 0;
   border-radius: 8px;
-  background: #0866ff;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+main { padding: 14px 18px 4px; }
+.panel[hidden] { display: none; }
+
+.card {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* Settings rows with switches */
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  cursor: pointer;
+}
+.setting + .setting { border-top: 1px solid var(--border); }
+.setting:hover { background: var(--accent-soft); }
+.text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.label { font-weight: 600; }
+.desc { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+.switch {
+  flex: none;
+  position: relative;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--switch-off);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(16px); }
+
+/* Shortcuts */
+.note { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+.note.off { color: #b54708; }
+h2 {
+  margin: 14px 2px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+h2:first-of-type { margin-top: 0; }
+.keys > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+}
+.keys > div + div { border-top: 1px solid var(--border); }
+.keys dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-width: 104px;
+  color: var(--muted);
+}
+.keys dd { margin: 0; font-size: 13px; }
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--kbd-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--kbd-bg);
+  color: var(--text);
+  font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Footer */
+/* Chrome caps popups at 600px tall; keep the action visible while the list scrolls. */
+.footer {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 18px 14px;
+  background: linear-gradient(to bottom, transparent, var(--bg) 14px);
+}
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--accent);
   color: #fff;
-  font-size: 14px;
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.primary:hover { background: var(--accent-hover); }
+.primary:active { transform: scale(0.98); }
+.status { min-height: 18px; margin: 8px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+/* Keyboard focus */
+.tab:focus-visible,
+.switch:focus-visible,
+.primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-#fullscreenNow:hover {
-  background: #0658d6;
+@media (prefers-reduced-motion: reduce) {
+  *, *::after { transition: none !important; }
 }
 
-.status {
-  min-height: 18px;
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: #606770;
-  text-align: center;
+@media (forced-colors: active) {
+  .switch { border: 1px solid CanvasText; }
+  .switch::after { background: CanvasText; }
+  .switch:checked { background: Highlight; }
+  .tab[aria-selected="true"] { outline: 1px solid CanvasText; }
 }
