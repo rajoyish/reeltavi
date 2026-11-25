@@ -2,6 +2,12 @@
 
 All notable changes to ReelTavi are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.2] – 2026-11-25
+
+### Fixed
+
+- Downloads now check the selected video's permalink and try both Watch and Reel pages when playback data is missing. ReelTavi also recognizes progressive files in Facebook's DASH URL field and keeps a playable source when a page lookup fails.
+
 ## [1.4.1] – 2026-11-24
 
 ### Fixed
@@ -54,6 +60,7 @@ First Chrome Web Store release.
   - Files are named `ReelTavi-<id>-<quality>.mp4`.
 - Privacy policy, store listing and packaging script.
 
+[1.4.2]: https://github.com/rajoyish/reeltavi/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/rajoyish/reeltavi/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/rajoyish/reeltavi/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/rajoyish/reeltavi/releases/tag/v1.3.0

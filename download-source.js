@@ -23,23 +23,31 @@ function videoIdFromLink(value) {
   return null;
 }
 
-function selectedVideoId(video) {
+function selectedVideo(video) {
   const explicit = video.closest('[data-video-id]')?.getAttribute('data-video-id');
-  if (/^\d+$/.test(explicit || '')) return explicit;
+  const explicitId = /^\d+$/.test(explicit || '') ? explicit : null;
   // Prefer the clicked card's permalink to the feed's current address.
   for (let el = video.parentElement; el && !el.matches('body, main, [role="main"], [role="feed"]'); el = el.parentElement) {
     if (el.querySelectorAll('video').length > 1) break;
-    const ids = new Set([...el.querySelectorAll('a[href]')].map(a => videoIdFromLink(a.href)).filter(Boolean));
-    if (ids.size === 1) return [...ids][0];
-    if (ids.size > 1 || el.matches('article, [role="article"]')) break;
+    const links = new Map();
+    for (const link of el.querySelectorAll('a[href]')) {
+      const id = videoIdFromLink(link.href);
+      if (id && (!explicitId || id === explicitId) && !links.has(id)) links.set(id, link.href);
+    }
+    if (links.size === 1) {
+      const [id, permalink] = links.entries().next().value;
+      return { id, permalink };
+    }
+    if (links.size > 1 || el.matches('article, [role="article"]')) break;
   }
   const pageId = videoIdFromLink(location.href);
+  if (explicitId) return { id: explicitId, permalink: explicitId === pageId ? location.href : null };
   if (!pageId) return null;
   const visible = [...document.querySelectorAll('video')].filter(player => {
     const r = player.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
   });
-  return visible.length === 1 && visible[0] === video ? pageId : null;
+  return visible.length === 1 && visible[0] === video ? { id: pageId, permalink: location.href } : null;
 }
 
 // Highest SD height offered. Facebook labels 480p and lower as SD.
@@ -110,11 +118,19 @@ function dashDownload(xml, base, quality = 'hd') {
   return { video: track.url, audio: tracks.audio, height: track.height || null, codec: track.codec, bandwidth: track.bandwidth };
 }
 
-function sourcesFromDocument(doc, id) {
+function isMediaFile(url) {
+  return url && /\.(?:mp4|webm|mov)$/i.test(new URL(url).pathname);
+}
+
+function isByteRange(url) {
+  return /[?&](?:bytestart|byteend)=/i.test(url);
+}
+
+function sourcesFromDocument(doc, id, pageUrl) {
   const found = { hd: null, sd: null, other: null, dash: null, manifest: null };
   const direct = value => {
     const url = facebookMediaUrl(value);
-    return url && !/\.(?:mpd|m3u8)(?:[?#]|$)/i.test(url) ? url : null;
+    return url && !/\.(?:mpd|m3u8)$/i.test(new URL(url).pathname) && !isByteRange(url) ? url : null;
   };
   const first = values => values.map(direct).find(Boolean) || null;
   for (const script of doc.querySelectorAll('script[type="application/json"], script[data-sjs]')) {
@@ -130,18 +146,25 @@ function sourcesFromDocument(doc, id) {
         const media = node.creation_story?.short_form_video_context?.playback_video || node;
         const legacy = media.videoDeliveryLegacyFields || media;
         const delivery = media.videoDeliveryResponseFragment?.videoDeliveryResponseResult;
-        const urls = delivery?.progressive_urls || [];
-        const progressive = quality => urls.find(item => item?.metadata?.quality?.toLowerCase() === quality)?.progressive_url;
-        found.hd ||= first([legacy.browser_native_hd_url, legacy.playable_url_quality_hd, progressive('hd'), legacy.hd_src]);
-        found.sd ||= first([legacy.browser_native_sd_url, progressive('sd'), legacy.playable_url, legacy.sd_src]);
-        found.other ||= first(urls.map(item => item?.progressive_url));
-        const manifests = delivery?.dash_manifests || [];
-        for (const [index, xml] of [legacy.dash_manifest, ...manifests.map(m => m?.manifest_xml)].entries()) {
+        const urls = Array.isArray(delivery?.progressive_urls) ? delivery.progressive_urls : [];
+        const progressive = quality => first(urls
+          .filter(item => String(item?.metadata?.quality).toLowerCase() === quality)
+          .map(item => item.progressive_url));
+        found.hd ||= first([legacy.browser_native_hd_url, legacy.playable_url_quality_hd]) || progressive('hd') || direct(legacy.hd_src);
+        found.sd ||= direct(legacy.browser_native_sd_url) || progressive('sd') || first([legacy.playable_url, legacy.sd_src]);
+        const playableDash = facebookMediaUrl(legacy.playable_url_dash);
+        found.other ||= first(urls.map(item => item?.progressive_url)) || (isMediaFile(playableDash) ? direct(playableDash) : null);
+        const manifests = Array.isArray(delivery?.dash_manifests) ? delivery.dash_manifests : [];
+        const legacyXml = legacy.dash_manifest || legacy.playlist || legacy.dash_manifest_xml_string || legacy.manifest_xml;
+        for (const [index, xml] of [legacyXml, ...manifests.map(m => m?.manifest_xml)].entries()) {
           if (found.dash) break;
           const base = index === 0 ? legacy.dash_manifest_url : delivery?.dash_manifest_urls?.[index - 1]?.manifest_url;
-          found.dash = dashTracks(xml, facebookMediaUrl(base) || undefined);
+          found.dash = dashTracks(xml, facebookMediaUrl(base, pageUrl) || pageUrl);
         }
-        found.manifest ||= facebookMediaUrl(delivery?.dash_manifest_urls?.[0]?.manifest_url || legacy.dash_manifest_url || legacy.playable_url_dash);
+        const manifestUrls = Array.isArray(delivery?.dash_manifest_urls) ? delivery.dash_manifest_urls : [];
+        const candidates = [...manifestUrls.map(item => item?.manifest_url), legacy.dash_manifest_url, playableDash];
+        found.manifest ||= candidates.map(value => facebookMediaUrl(value)).find(url =>
+          url && !isMediaFile(url) && !/\.m3u8$/i.test(new URL(url).pathname)) || null;
       }
       for (const child of Object.values(node)) if (child && typeof child === 'object') pending.push(child);
     }
@@ -184,23 +207,39 @@ function downloadOptions({ hd, sd, other, dash, manifest }) {
 
 async function findDownload(video) {
   if (video.mediaKeys || video.duration === Infinity) throw new Error('Downloads are available for unprotected, finished videos.');
-  const id = selectedVideoId(video);
-  let options = id && sourcesFromDocument(document, id);
+  const { id, permalink } = selectedVideo(video) || {};
+  let options = id && sourcesFromDocument(document, id, location.href);
   const direct = facebookMediaUrl(video.currentSrc || video.src);
-  if (!options && direct && /\.(?:mp4|webm|mov)(?:[?#]|$)/i.test(direct) &&
-      !/[?&](?:bytestart|byteend)=/i.test(direct)) {
+  if (!options && isMediaFile(direct) && !isByteRange(direct)) {
     options = [{ quality: 'current', height: video.videoHeight || null, label: qualityLabel(video.videoHeight) || 'Video', direct }];
   }
-  // The video's own page often carries the DASH tracks (Full HD) that a feed omits.
+  // Watch and Reel permalinks can return different playback data for the same video.
   if ((!options || options.length < 2) && id) {
-    const page = await fetch('/watch/?v=' + id, { credentials: 'same-origin', signal: AbortSignal.timeout(20000) });
-    if (page.ok) {
-      const doc = new DOMParser().parseFromString(await page.text(), 'text/html');
-      const fetched = sourcesFromDocument(doc, id);
-      if (fetched && fetched.length > (options?.length || 0)) options = fetched;
+    const paths = new Set();
+    if (permalink) {
+      const link = new URL(permalink);
+      // Normalize to the current Facebook origin to keep the request in the signed-in session.
+      if (!link.pathname.startsWith('//')) paths.add(link.pathname + link.search);
+    }
+    paths.add('/watch/?v=' + id);
+    paths.add('/reel/' + id + '/');
+    const signal = AbortSignal.timeout(20000);
+    for (const path of paths) {
+      const url = new URL(path, location.origin);
+      if (signal.aborted || options?.length === 2) break;
+      if (url.origin !== location.origin) continue;
+      try {
+        const page = await fetch(url, { credentials: 'same-origin', signal });
+        if (!page.ok) continue;
+        const doc = new DOMParser().parseFromString(await page.text(), 'text/html');
+        const fetched = sourcesFromDocument(doc, id, page.url || url.href);
+        if (fetched && fetched.length > (options?.length || 0)) options = fetched;
+      } catch {
+        // A failed lookup should not discard sources already found on another page.
+      }
     }
   }
   if (!options) throw new Error(id ? 'Facebook did not provide a downloadable file for this video.' :
     'Open this video on its own Facebook page, then try Download again.');
-  return { id, options };
+  return { id: id || null, options };
 }

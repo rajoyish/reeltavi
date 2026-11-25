@@ -46,7 +46,7 @@
     "downloads",
     "offscreen"
   ],
-  "version": "1.4.1",
+  "version": "1.4.2",
   "background": {
     "service_worker": "download-worker.js"
   },
